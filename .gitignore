@@ -1,0 +1,63 @@
+# Environment variables & secrets
+.env
+*.env
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Backend generated data & outputs
+backend/data/
+backend/data/uploads/*
+backend/data/outputs/*
+!backend/data/uploads/.gitkeep
+!backend/data/outputs/.gitkeep
+
+# Model checkpoints & large binary weights (>100MB)
+*.pt
+*.pth
+*.onnx
+*.bin
+checkpoints/
+backend/feature_extraction/checkpoints/
+
+# Node & Next.js
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+out/
+frontend/out/
+build/
+frontend/build/
+.turbo/
+frontend/.turbo/
+
+# OS files
+.DS_Store
+Thumbs.db
