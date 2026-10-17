@@ -5,8 +5,12 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Cpu, Box, Leaf, FileText, CheckCircle,
-  Loader2, ChevronRight, Download, ArrowLeft, Printer, Wand2
+  Loader2, ChevronRight, Download, ArrowLeft, Printer, Wand2,
+  MapPin, Satellite, Flame, Thermometer
 } from "lucide-react";
+import HeatMapViewer, {
+  HeatMapData, ExifData, WeatherData, HeatAnalysis
+} from "@/components/HeatMapViewer";
 
 const GLBViewer = dynamic(() => import("@/components/GLBViewer"), {
   ssr: false,
@@ -36,6 +40,12 @@ interface SegResult {
   ndbi: number;
   solar_exposure: number;
   status: string;
+  lat?: number;
+  lon?: number;
+  exif?: ExifData;
+  weather?: WeatherData;
+  heat_analysis?: HeatAnalysis;
+  heatmap?: HeatMapData;
 }
 
 interface TrellisResult {
@@ -172,6 +182,18 @@ function SegStats({ seg }: { seg: SegResult }) {
           </div>
         ))}
       </div>
+
+      {/* Geotagged Satellite Thermal Heat Map & Microclimate Model */}
+      {seg.heatmap && (
+        <div className="pt-3">
+          <HeatMapViewer
+            heatmap={seg.heatmap}
+            exif={seg.exif}
+            weather={seg.weather}
+            heatAnalysis={seg.heat_analysis}
+          />
+        </div>
+      )}
     </div>
   );
 }

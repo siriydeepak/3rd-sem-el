@@ -16,6 +16,11 @@ from PIL import Image
 
 import google.generativeai as genai
 from trellis import generate_glb
+from exif_service import extract_exif_metadata
+from satellite_weather_service import get_satellite_weather
+from heat_model_service import evaluate_interventions
+from heatmap_service import generate_urban_heat_map
+from semantic_thermal_service import get_semantic_temperatures, get_vertex_color_mapping
 
 load_dotenv()
 
@@ -187,6 +192,7 @@ async def segment_image(
 
     logger.info("[SEG] Segmenting: %s (%d bytes)", file.filename, len(image_bytes))
 
+    # 1. Surface Segmentation
     try:
         features, overlay_bytes, original_bytes = await asyncio.to_thread(
             _colour_segment, image_bytes
@@ -194,6 +200,42 @@ async def segment_image(
     except Exception as exc:
         logger.exception("[SEG] Failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Segmentation failed: {exc}")
+
+    # 2. Extract EXIF Geotag & Capture Timestamp
+    exif_meta = extract_exif_metadata(image_bytes)
+    resolved_lat = lat if (lat != 0.0) else exif_meta["latitude"]
+    resolved_lon = lon if (lon != 0.0) else exif_meta["longitude"]
+
+    # 3. Retrieve Satellite & Ambient Environmental Thermal Data
+    weather = await get_satellite_weather(
+        resolved_lat, resolved_lon, exif_meta.get("timestamp")
+    )
+
+    # 4. Connect to HeatScape ML Model for Localized LST & Interventions
+    combined_features = {
+        **features,
+        "air_temperature": weather["air_temperature"],
+        "humidity": weather["humidity"],
+        "solar_exposure": weather["solar_exposure"],
+        "satellite_lst": weather["satellite_lst"],
+        "tree_canopy_pct": round(features.get("vegetation_pct", 0) * 0.7, 2),
+    }
+
+    heat_analysis = evaluate_interventions(
+        combined_features,
+        air_temp=weather["air_temperature"],
+        sat_lst=weather["satellite_lst"]
+    )
+
+    # 5. Generate Urban Heat Map Grid
+    heatmap_data = generate_urban_heat_map(
+        center_lat=resolved_lat,
+        center_lon=resolved_lon,
+        baseline_lst=heat_analysis["baseline_lst"],
+        mitigated_drop=heat_analysis["interventions"]["combined"]["temp_reduction_c"],
+        radius_meters=300.0,
+        grid_size=5
+    )
 
     # Save original (resized)
     orig_path = UPLOAD_DIR / f"orig_{img_id}.png"
@@ -207,15 +249,66 @@ async def segment_image(
     raw_path  = UPLOAD_DIR / f"raw_{img_id}{img_ext}"
     raw_path.write_bytes(image_bytes)
 
+    # 6. Semantic Thermal Heuristics (Member 3: Object-level mapping & 3D vertex colors)
+    semantic_thermal = get_semantic_temperatures(
+        heat_analysis["baseline_lst"],
+        solar_exposure=weather.get("solar_exposure", 0.85)
+    )
+    vertex_colors = get_vertex_color_mapping(heat_analysis["baseline_lst"])
+
     return {
         **features,
-        "image_id"      : img_id,
-        "original_url"  : f"/uploads/{orig_path.name}",
-        "overlay_url"   : f"/uploads/{ovly_path.name}",
-        "raw_url"       : f"/uploads/{raw_path.name}",
-        "lat"           : lat,
-        "lon"           : lon,
+        "image_id"         : img_id,
+        "original_url"     : f"/uploads/{orig_path.name}",
+        "overlay_url"      : f"/uploads/{ovly_path.name}",
+        "raw_url"          : f"/uploads/{raw_path.name}",
+        "lat"              : resolved_lat,
+        "lon"              : resolved_lon,
+        "exif"             : exif_meta,
+        "weather"          : weather,
+        "heat_analysis"    : heat_analysis,
+        "heatmap"          : heatmap_data,
+        "semantic_thermal" : semantic_thermal,
+        "vertex_colors"    : vertex_colors,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  STEP 1.5 — /api/heatmap (Dynamic microclimate heat map recalculation)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/heatmap")
+async def get_heatmap_custom(
+    lat: float = Form(...),
+    lon: float = Form(...),
+    baseline_lst: float = Form(...),
+    mitigated_drop: float = Form(default=3.5),
+    radius_meters: float = Form(default=300.0)
+):
+    """
+    Returns localized heat map points based on coordinates, baseline LST, and intervention drop.
+    """
+    return generate_urban_heat_map(
+        center_lat=lat,
+        center_lon=lon,
+        baseline_lst=baseline_lst,
+        mitigated_drop=mitigated_drop,
+        radius_meters=radius_meters,
+        grid_size=5
+    )
+
+
+@app.get("/api/semantic-thermal")
+async def get_semantic_thermal_info(baseline_lst: float = 38.0, solar_exposure: float = 0.85):
+    """
+    Returns semantic object temperatures and Three.js vertex color mappings for 3D model coloring.
+    """
+    return {
+        "baseline_lst": baseline_lst,
+        "semantic_temperatures": get_semantic_temperatures(baseline_lst, solar_exposure),
+        "vertex_colors": get_vertex_color_mapping(baseline_lst)
+    }
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
