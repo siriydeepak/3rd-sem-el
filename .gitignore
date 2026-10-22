@@ -61,3 +61,7 @@ frontend/.turbo/
 # OS files
 .DS_Store
 Thumbs.db
+
+drive-download-*.zip
+*.zip
+

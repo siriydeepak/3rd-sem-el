@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 def evaluate_model(model, X_test, y_test):
     predictions = model.predict(X_test)
