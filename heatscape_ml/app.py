@@ -44,7 +44,7 @@ if os.path.exists(raster_path):
 
         st.caption(
             f"CRS: {metadata['crs']} | "
-            f"Resolution: {metadata['resolution_m']} map units | "
+            f"Resolution: {metadata['resolution_m']} metres | "
             f"Valid pixels: {stats['valid_pixels']:,}"
         )
 
