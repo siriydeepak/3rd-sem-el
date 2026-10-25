@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import rasterio
+from rasterio.plot import show
+
 
 from src.preprocessing import load_data, prepare_features_target, split_data
 from src.model import load_model
