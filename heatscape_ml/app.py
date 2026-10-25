@@ -17,6 +17,30 @@ st.set_page_config(page_title="HeatScape Prototype", layout="wide")
 
 st.title("🌡️ HeatScape – ML Heat Exposure Prototype")
 
+st.header("🛰️ Satellite Land Surface Temperature")
+
+raster_path = r"C:\Users\User\Documents\HeatScape_LST_CloudMasked_Final.tif"
+
+if os.path.exists(raster_path):
+    with rasterio.open(raster_path) as src:
+        lst_data = src.read(1, masked=True)
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    image = ax.imshow(lst_data, cmap="RdYlGn_r")
+    ax.set_title("Landsat Land Surface Temperature (°C)")
+    ax.set_xlabel("Raster column")
+    ax.set_ylabel("Raster row")
+    fig.colorbar(image, ax=ax, label="Temperature (°C)")
+    st.pyplot(fig)
+    plt.close(fig)
+else:
+    st.info(
+        "Satellite raster not found. "
+        "Place HeatScape_LST_CloudMasked_Final.tif "
+        "in the Documents folder on the computer running this app."
+    )
+
+
 st.header("1. Project Overview")
 st.write("""
 HeatScape is an AI/ML-based urban heat mitigation system. This prototype demonstrates a proof-of-concept machine learning pipeline that uses urban morphological features, vegetation indices, and environmental factors to estimate localized Land Surface Temperature (LST) and simulate the effects of cooling interventions.
