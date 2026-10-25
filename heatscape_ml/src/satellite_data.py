@@ -7,6 +7,7 @@ def load_satellite_lst(raster_path):
     """Load a land-surface-temperature GeoTIFF in Celsius."""
     with rasterio.open(raster_path) as src:
         lst = src.read(1, masked=True).astype("float32")
+lst = np.ma.masked_invalid(lst)
         metadata = {
             "crs": str(src.crs),
             "resolution_m": src.res[0],
