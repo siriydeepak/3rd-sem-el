@@ -19,7 +19,11 @@ st.title("🌡️ HeatScape – ML Heat Exposure Prototype")
 
 st.header("🛰️ Satellite Land Surface Temperature")
 
-raster_path = r"C:\Users\User\Documents\HeatScape_LST_CloudMasked_Final.tif"
+raster_path = os.path.join(
+    os.path.dirname(__file__),
+    "data",
+    "HeatScape_LST_CloudMasked_Final.tif"
+)
 
 if os.path.exists(raster_path):
     with rasterio.open(raster_path) as src:
