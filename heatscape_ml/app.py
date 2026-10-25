@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import rasterio
-from rasterio.plot import show
-
+from src.satellite_data import load_satellite_lst, get_lst_statistics
 
 from src.preprocessing import load_data, prepare_features_target, split_data
 from src.model import load_model
@@ -26,23 +24,39 @@ raster_path = os.path.join(
 )
 
 if os.path.exists(raster_path):
-    with rasterio.open(raster_path) as src:
-        lst_data = src.read(1, masked=True)
+    try:
+        lst_data, metadata = load_satellite_lst(raster_path)
+        stats = get_lst_statistics(lst_data)
 
-    fig, ax = plt.subplots(figsize=(10, 7))
-    image = ax.imshow(lst_data, cmap="RdYlGn_r")
-    ax.set_title("Landsat Land Surface Temperature (°C)")
-    ax.set_xlabel("Raster column")
-    ax.set_ylabel("Raster row")
-    fig.colorbar(image, ax=ax, label="Temperature (°C)")
-    st.pyplot(fig)
-    plt.close(fig)
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Mean LST", f"{stats['mean_c']:.2f} °C")
+        col2.metric("Minimum LST", f"{stats['min_c']:.2f} °C")
+        col3.metric("Maximum LST", f"{stats['max_c']:.2f} °C")
+
+        fig, ax = plt.subplots(figsize=(10, 7))
+        image = ax.imshow(lst_data, cmap="RdYlGn_r")
+        ax.set_title("Landsat Land Surface Temperature")
+        ax.set_xlabel("Raster column")
+        ax.set_ylabel("Raster row")
+        fig.colorbar(image, ax=ax, label="Temperature (°C)")
+        st.pyplot(fig)
+        plt.close(fig)
+
+        st.caption(
+            f"CRS: {metadata['crs']} | "
+            f"Resolution: {metadata['resolution_m']} map units | "
+            f"Valid pixels: {stats['valid_pixels']:,}"
+        )
+
+    except Exception as e:
+        st.error(f"Could not load satellite raster: {e}")
 else:
     st.info(
-        "Satellite raster not found. "
-        "Place HeatScape_LST_CloudMasked_Final.tif "
-        "in the Documents folder on the computer running this app."
+        "Satellite raster not found. Place "
+        "HeatScape_LST_CloudMasked_Final.tif in the project's data folder."
     )
+
+
 
 
 st.header("1. Project Overview")
