@@ -1,3 +1,4 @@
+
 pandas
 numpy
 scikit-learn
@@ -5,3 +6,4 @@ matplotlib
 seaborn
 shap
 streamlit
+rasterio
