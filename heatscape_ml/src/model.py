@@ -1,16 +1,19 @@
-from sklearn.ensemble import RandomForestRegressor
-import joblib
-import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-def train_model(X_train, y_train):
-    model = RandomForestRegressor(n_estimators=200, random_state=42)
-    model.fit(X_train, y_train)
-    return model
+def load_data(filepath='data/synthetic_heat_data.csv'):
+    df = pd.read_csv(filepath)
+    return df
 
-def save_model(model, filepath='models/rf_model.pkl'):
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    joblib.dump(model, filepath)
-    print(f"Model saved to {filepath}")
+def prepare_features_target(df):
+    features = [
+        'vegetation_pct', 'pavement_pct', 'building_pct', 
+        'tree_canopy_pct', 'ndvi', 'ndbi', 'building_height_m', 
+        'sky_view_factor', 'solar_exposure', 'air_temperature', 'humidity'
+    ]
+    X = df[features]
+    y = df['lst']
+    return X, y
 
-def load_model(filepath='models/rf_model.pkl'):
-    return joblib.load(filepath)
+def split_data(X, y, test_size=0.2, random_state=42):
+    return train_test_split(X, y, test_size=test_size, random_state=random_state)

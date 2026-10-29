@@ -1,0 +1,23 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python generated files and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Frontend generated files
+node_modules/
+.next/
+out/
+build/
+
+# Large satellite rasters - share separately for now
+heatscape_ml/data/*.tif
+heatscape_ml/data/*.tiff

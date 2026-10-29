@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+google-generativeai
+gradio-client
+httpx
+Pillow
+python-multipart
+numpy
+fal-client

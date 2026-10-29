@@ -1,0 +1,18 @@
+import numpy as np
+import rasterio
+
+path = r"data\HeatScape_LST_CloudMasked_Final.tif"
+
+with rasterio.open(path) as src:
+    data = src.read(1, masked=True).astype("float32")
+    values = data.compressed()
+
+    print("CRS:", src.crs)
+    print("NoData:", src.nodata)
+    print("Valid pixels:", len(values))
+    print("Minimum:", np.min(values))
+    print("Maximum:", np.max(values))
+    print("Mean:", np.mean(values))
+    print("Percentiles:", np.percentile(values, [1, 5, 50, 95, 99]))
+    print("Pixels below 12.6:", np.sum(values < 12.6))
+    print("Pixels above 42:", np.sum(values > 42))
