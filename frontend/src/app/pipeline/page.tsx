@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Cpu, Box, Leaf, FileText, CheckCircle,
   Loader2, ChevronRight, Download, ArrowLeft, Printer, Wand2,
-  MapPin, Satellite, Flame, Thermometer
+  Sparkles, RefreshCw, Layers, CheckSquare, Square,
+  Sliders, Eye, ShieldCheck
 } from "lucide-react";
 import HeatMapViewer, {
   HeatMapData, ExifData, WeatherData, HeatAnalysis
@@ -66,12 +67,12 @@ interface Intervention {
 }
 
 const STEPS = [
-  { id: 1, icon: Upload,  label: "Upload",        desc: "Upload campus photo" },
-  { id: 2, icon: Cpu,     label: "SAM2 Analysis", desc: "Surface segmentation" },
-  { id: 3, icon: Box,     label: "3D Model",      desc: "TRELLIS base mesh" },
-  { id: 4, icon: Leaf,    label: "Interventions", desc: "Gemini AI strategies" },
-  { id: 5, icon: Wand2,   label: "Visualize",     desc: "FLUX Lightning render" },
-  { id: 6, icon: FileText,label: "Report",        desc: "Full analysis" },
+  { id: 1, icon: Upload,   label: "Upload",         desc: "Upload campus photo" },
+  { id: 2, icon: Cpu,      label: "SAM2 Analysis",  desc: "Surface segmentation" },
+  { id: 3, icon: Box,      label: "3D Model",       desc: "TRELLIS base mesh" },
+  { id: 4, icon: Leaf,     label: "Interventions",  desc: "Gemini AI strategies" },
+  { id: 5, icon: Wand2,    label: "AI Simulation",  desc: "Image-to-image simulation" },
+  { id: 6, icon: FileText, label: "Final Report",   desc: "Full analysis & PDF" },
 ];
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -127,13 +128,13 @@ function SegStats({ seg }: { seg: SegResult }) {
       {/* Side-by-side images */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[10px] font-mono text-gray-500 mb-1.5">ORIGINAL</p>
+          <p className="text-[10px] font-mono text-gray-500 mb-1.5 uppercase">ORIGINAL IMAGE</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${API}${seg.original_url}`} alt="original"
             className="w-full rounded-lg border border-teal-800 object-cover" />
         </div>
         <div>
-          <p className="text-[10px] font-mono text-gray-500 mb-1.5">SEGMENTATION OVERLAY</p>
+          <p className="text-[10px] font-mono text-gray-500 mb-1.5 uppercase">SEGMENTATION OVERLAY</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${API}${seg.overlay_url}`} alt="overlay"
             className="w-full rounded-lg border border-teal-800 object-cover" />
@@ -198,7 +199,7 @@ function SegStats({ seg }: { seg: SegResult }) {
   );
 }
 
-// ── Intervention Card (selectable) ────────────────────────────────────────────
+// ── Selectable Intervention Card ──────────────────────────────────────────────
 
 function InterventionCard({
   item, index, selected, onToggle,
@@ -210,54 +211,72 @@ function InterventionCard({
       onClick={onToggle}
       className={`w-full text-left border rounded-xl p-4 transition-all duration-200 cursor-pointer
         ${selected
-          ? "border-heat-green bg-heat-green/10 shadow-[0_0_12px_rgba(6,214,160,0.15)]"
-          : "border-teal-800 bg-teal-900/30 hover:border-teal-600"}`}
+          ? "border-heat-green bg-heat-green/10 shadow-[0_0_12px_rgba(6,214,160,0.15)] ring-1 ring-heat-green/40"
+          : "border-teal-800 bg-teal-900/30 hover:border-teal-600 hover:bg-teal-900/50"}`}
     >
       <div className="flex items-start gap-3">
-        {/* Checkbox */}
+        {/* Checkbox indicator */}
         <div className={`mt-0.5 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all
-          ${selected ? "bg-heat-green border-heat-green" : "border-teal-600"}`}>
-          {selected && <CheckCircle className="w-3 h-3 text-teal-900" />}
+          ${selected ? "bg-heat-green border-heat-green text-teal-950 font-bold" : "border-teal-600 text-transparent"}`}>
+          {selected ? <CheckCircle className="w-3.5 h-3.5" /> : null}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-gray-600">0{index + 1}</span>
+              <span className="text-[10px] font-mono text-gray-500">0{index + 1}</span>
               <h4 className={`font-bold text-sm ${selected ? "text-white" : "text-gray-300"}`}>
                 {item.title}
               </h4>
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-heat-green font-black text-lg leading-none">-{item.temp_reduction_c}°C</p>
-              <p className="text-gray-400 text-xs mt-0.5">₹{item.budget_inr.toLocaleString("en-IN")}</p>
+              <p className="text-gray-400 text-xs mt-0.5 font-mono">₹{item.budget_inr.toLocaleString("en-IN")}</p>
             </div>
           </div>
-          <p className="text-gray-500 text-xs mt-1.5 italic leading-relaxed">{item.what_to_do}</p>
+          <p className="text-gray-300 text-xs mt-1.5 leading-relaxed">{item.reason}</p>
+          <p className="text-gray-400 text-xs mt-1 italic leading-relaxed">{item.what_to_do}</p>
 
-          {/* Sustainability dots */}
-          <div className="flex items-center gap-1.5 mt-2">
-            <span className="text-[10px] text-gray-600">Sustainability</span>
-            <div className="flex gap-0.5">
-              {Array.from({ length: 10 }).map((_, j) => (
-                <div key={j}
-                  className={`w-2.5 h-1.5 rounded-sm ${j < item.sustainability_score ? "bg-heat-green" : "bg-teal-800"}`}
-                />
+          <div className="flex items-center justify-between flex-wrap gap-2 mt-3 pt-2 border-t border-teal-800/40">
+            {/* Sustainability indicator */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-gray-500">Sustainability</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: 10 }).map((_, j) => (
+                  <div key={j}
+                    className={`w-2.5 h-1.5 rounded-sm ${j < item.sustainability_score ? "bg-heat-green" : "bg-teal-900"}`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] text-heat-green font-bold">{item.sustainability_score}/10</span>
+            </div>
+
+            {/* Implementation time */}
+            <span className="text-[10px] bg-teal-800/60 text-teal-300 px-2 py-0.5 rounded-full">
+              {item.implementation_weeks}w implementation
+            </span>
+          </div>
+
+          {item.co_benefits && item.co_benefits.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {item.co_benefits.map((benefit, bi) => (
+                <span key={bi} className="text-[9px] bg-teal-950 border border-teal-800/70 text-gray-300 px-2 py-0.5 rounded-md">
+                  + {benefit}
+                </span>
               ))}
             </div>
-            <span className="text-[10px] text-heat-green font-bold">{item.sustainability_score}/10</span>
-          </div>
+          )}
         </div>
       </div>
     </button>
   );
 }
 
-// ── Report Component ──────────────────────────────────────────────────────────
+// ── Report Component (Step 6) ────────────────────────────────────────────────
 
 function Report({
   segResult, trellisResult, interventions, budget,
-  selectedIdxs, interventionImage, interventionTrellis, onReset,
+  selectedIdxs, interventionImage, interventionModel, interventionTrellis, onReset,
 }: {
   segResult: SegResult;
   trellisResult: TrellisResult | null;
@@ -265,6 +284,7 @@ function Report({
   budget: number;
   selectedIdxs: number[];
   interventionImage: string | null;
+  interventionModel: string | null;
   interventionTrellis: TrellisResult | null;
   onReset: () => void;
 }) {
@@ -280,18 +300,18 @@ function Report({
       <div className="border border-teal-700 rounded-xl p-6 bg-gradient-to-br from-teal-900/60 to-[#0a1628]">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <p className="text-[10px] font-mono tracking-widest text-heat-green mb-1">
+            <p className="text-[10px] font-mono tracking-widest text-heat-green mb-1 uppercase">
               HEATSCAPE — URBAN THERMAL ANALYSIS REPORT
             </p>
             <h2 className="text-2xl font-black text-white uppercase tracking-tight">
               Heat Island Mitigation Plan
             </h2>
             <p className="text-gray-400 text-sm mt-1">
-              SAM2 Segmentation · Gemini Vision · FLUX Lightning · TRELLIS 3D
+              SAM2 Segmentation · Gemini Vision · Structure Image-to-Image · TRELLIS 3D
             </p>
           </div>
           <button onClick={() => window.print()}
-            className="flex items-center gap-2 border border-teal-600 text-teal-400 px-4 py-2 rounded text-sm font-semibold hover:bg-teal-800 transition-all">
+            className="flex items-center gap-2 border border-teal-600 text-teal-400 px-4 py-2 rounded text-sm font-semibold hover:bg-teal-800 transition-all cursor-pointer">
             <Printer className="w-4 h-4" /> Export PDF
           </button>
         </div>
@@ -300,7 +320,7 @@ function Report({
       {/* 01 — Surface Analysis */}
       <div className="border border-teal-700 rounded-xl overflow-hidden">
         <div className="bg-teal-900/40 px-5 py-3 border-b border-teal-700 flex justify-between items-center">
-          <h3 className="text-white font-bold uppercase tracking-wider text-sm">01 — Surface Analysis</h3>
+          <h3 className="text-white font-bold uppercase tracking-wider text-sm">01 — Surface Analysis &amp; Microclimate</h3>
           <a href={`${API}${segResult.overlay_url}`} download
             className="text-xs text-teal-400 hover:underline flex items-center gap-1">
             <Download className="w-3 h-3" /> Download Mask
@@ -311,18 +331,23 @@ function Report({
         </div>
       </div>
 
-      {/* 02 — Before / After Visualisation */}
+      {/* 02 — Before / After Simulation */}
       {interventionImage && (
         <div className="border border-teal-700 rounded-xl overflow-hidden">
-          <div className="bg-teal-900/40 px-5 py-3 border-b border-teal-700">
+          <div className="bg-teal-900/40 px-5 py-3 border-b border-teal-700 flex justify-between items-center">
             <h3 className="text-white font-bold uppercase tracking-wider text-sm">
-              02 — AI Visualisation (FLUX Lightning)
+              02 — Image-to-Image Campus Intervention Simulation
             </h3>
+            {interventionModel && (
+              <span className="text-[10px] font-mono text-teal-300 bg-teal-950 border border-teal-700 px-2 py-0.5 rounded-full">
+                {interventionModel}
+              </span>
+            )}
           </div>
           <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <p className="text-xs text-gray-500 font-mono">BEFORE</p>
+                <p className="text-xs text-gray-500 font-mono uppercase">BEFORE (ORIGINAL CAMPUS PHOTO)</p>
                 <a href={`${API}${segResult.original_url}`} download
                   className="text-[10px] text-teal-500 hover:underline">Download</a>
               </div>
@@ -332,7 +357,7 @@ function Report({
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
-                <p className="text-xs text-heat-green font-mono">AFTER (INTERVENTIONS)</p>
+                <p className="text-xs text-heat-green font-mono uppercase">AFTER (INTERVENTIONS ADDED)</p>
                 <a href={`${API}${interventionImage}`} download
                   className="text-[10px] text-heat-green hover:underline">Download</a>
               </div>
@@ -356,7 +381,7 @@ function Report({
             {trellisResult && (
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs text-gray-500 font-mono">BEFORE 3D</p>
+                  <p className="text-xs text-gray-500 font-mono uppercase">BASELINE 3D MODEL</p>
                   <a href={`${API}${trellisResult.model_url}`} download
                     className="text-[10px] text-teal-500 hover:underline">Download GLB</a>
                 </div>
@@ -366,7 +391,7 @@ function Report({
             {interventionTrellis && (
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs text-heat-green font-mono">AFTER 3D</p>
+                  <p className="text-xs text-heat-green font-mono uppercase">INTERVENED 3D MODEL</p>
                   <a href={`${API}${interventionTrellis.model_url}`} download
                     className="text-[10px] text-heat-green hover:underline">Download GLB</a>
                 </div>
@@ -377,11 +402,11 @@ function Report({
         </div>
       )}
 
-      {/* 04 — Interventions breakdown */}
+      {/* 04 — Applied Interventions breakdown */}
       <div className="border border-teal-700 rounded-xl overflow-hidden">
         <div className="bg-teal-900/40 px-5 py-3 border-b border-teal-700">
           <h3 className="text-white font-bold uppercase tracking-wider text-sm">
-            04 — Applied Intervention Strategies
+            04 — Selected Mitigation Interventions Breakdown
           </h3>
         </div>
         <div className="p-5 space-y-4">
@@ -390,11 +415,11 @@ function Report({
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-mono text-gray-600">0{i + 1}</span>
+                    <span className="text-[10px] font-mono text-gray-500">0{i + 1}</span>
                     <h4 className="text-white font-bold">{item.title}</h4>
                   </div>
-                  <p className="text-gray-400 text-sm">{item.reason}</p>
-                  <p className="text-gray-500 text-xs mt-1 italic">{item.what_to_do}</p>
+                  <p className="text-gray-300 text-sm">{item.reason}</p>
+                  <p className="text-gray-400 text-xs mt-1 italic">{item.what_to_do}</p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     <span className="text-[10px] bg-teal-800/60 text-teal-300 px-2 py-0.5 rounded-full">
                       {item.implementation_weeks}w implementation
@@ -409,7 +434,7 @@ function Report({
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-heat-green font-black text-2xl">-{item.temp_reduction_c}°C</p>
-                  <p className="text-white font-semibold">₹{item.budget_inr.toLocaleString("en-IN")}</p>
+                  <p className="text-white font-semibold font-mono">₹{item.budget_inr.toLocaleString("en-IN")}</p>
                 </div>
               </div>
             </div>
@@ -421,15 +446,15 @@ function Report({
       <div className="border border-heat-green/30 rounded-xl p-5 bg-heat-green/5">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-gray-400 text-xs">Budget Used</p>
-            <p className="text-white font-black text-xl">₹{totalCost.toLocaleString("en-IN")}</p>
+            <p className="text-gray-400 text-xs">Total Budget Allocated</p>
+            <p className="text-white font-black text-xl font-mono">₹{budget.toLocaleString("en-IN")}</p>
           </div>
           <div>
-            <p className="text-gray-400 text-xs">Temp Drop</p>
-            <p className="text-heat-green font-black text-xl">-{totalDrop.toFixed(1)}°C</p>
+            <p className="text-gray-400 text-xs">Net Temperature Drop</p>
+            <p className="text-heat-green font-black text-2xl">-{totalDrop.toFixed(1)}°C</p>
           </div>
           <div>
-            <p className="text-gray-400 text-xs">Interventions</p>
+            <p className="text-gray-400 text-xs">Simulated Interventions</p>
             <p className="text-white font-black text-xl">{applied.length}</p>
           </div>
         </div>
@@ -437,8 +462,8 @@ function Report({
 
       <div className="flex justify-center pb-12">
         <button onClick={onReset}
-          className="flex items-center gap-2 border border-teal-600 text-teal-400 px-6 py-2.5 rounded font-semibold hover:bg-teal-800 transition-all">
-          <ArrowLeft className="w-4 h-4" /> Start Over
+          className="flex items-center gap-2 border border-teal-600 text-teal-400 px-6 py-2.5 rounded font-semibold hover:bg-teal-800 transition-all cursor-pointer">
+          <ArrowLeft className="w-4 h-4" /> Analyse Another Location
         </button>
       </div>
     </motion.div>
@@ -456,17 +481,21 @@ export default function PipelinePage() {
   const [interventions, setInterventions]   = useState<Intervention[] | null>(null);
   const [selectedIdxs, setSelectedIdxs]     = useState<number[]>([]);
   const [interventionImage, setInterventionImage]     = useState<string | null>(null);
+  const [interventionModel, setInterventionModel]     = useState<string | null>(null);
   const [interventionTrellis, setInterventionTrellis] = useState<TrellisResult | null>(null);
-  const [budget, setBudget]   = useState(500000);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [budget, setBudget]         = useState(500000);
+  const [loading, setLoading]       = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const [trellisLoading, setTrellisLoading] = useState(false);
+  const [simViewMode, setSimViewMode]       = useState<"side" | "original" | "intervened">("side");
+  const [error, setError]           = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setActiveStep(1); setFile(null); setPreviewUrl(null);
     setSegResult(null); setTrellis(null); setInterventions(null);
-    setSelectedIdxs([]); setInterventionImage(null); setInterventionTrellis(null);
-    setError(null);
+    setSelectedIdxs([]); setInterventionImage(null); setInterventionModel(null);
+    setInterventionTrellis(null); setError(null);
   }, []);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -491,7 +520,6 @@ export default function PipelinePage() {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setSegResult(data);
-      // Stay on step 2 to show results — user clicks Continue to go to step 3
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }
@@ -528,40 +556,55 @@ export default function PipelinePage() {
     finally { setLoading(false); }
   }
 
-  async function runVisualize() {
-    if (!file || !interventions) return;
-    setLoading(true); setError(null);
+  async function runSimulateImage() {
+    if (!file || !interventions || selectedIdxs.length === 0) return;
+    setSimulating(true); setError(null);
     try {
       // Build prompt from ONLY the selected interventions
       const selected = interventions.filter((_, i) => selectedIdxs.includes(i));
-      const prompt   = selected.map(i => i.what_to_do).join(". ");
+      const prompt = selected.map(i => `${i.title}: ${i.what_to_do}`).join(". ");
 
-      // 1. Generate intervention image
-      const form1 = new FormData();
-      form1.append("file", file);
-      form1.append("prompt", prompt);
-      const res1 = await fetch(`${API}/api/generate-intervention-image`, { method: "POST", body: form1 });
-      if (!res1.ok) throw new Error(await res1.text());
-      const data1 = await res1.json();
-      setInterventionImage(data1.image_url);
+      const form = new FormData();
+      form.append("file", file);
+      form.append("prompt", prompt);
 
-      // 2. Send that new image to TRELLIS for the "after" 3D model (non-fatal if HuggingFace is queued)
-      try {
-        const imgBlob  = await (await fetch(`${API}${data1.image_url}`)).blob();
-        const newFile  = new File([imgBlob], "after.png", { type: "image/png" });
-        const form2    = new FormData();
-        form2.append("file", newFile);
-        const res2 = await fetch(`${API}/api/generate-3d`, { method: "POST", body: form2 });
-        if (res2.ok) {
-          setInterventionTrellis(await res2.json());
-        }
-      } catch (trellisErr) {
-        console.warn("TRELLIS 3D generation skipped or timed out:", trellisErr);
+      const res = await fetch(`${API}/api/generate-intervention-image`, {
+        method: "POST",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const errDetail = await res.text();
+        throw new Error(errDetail);
       }
 
-      setActiveStep(6);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+      const data = await res.json();
+      setInterventionImage(data.image_url);
+      setInterventionModel(data.model || "Structural Image-to-Image Simulation");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSimulating(false);
+    }
+  }
+
+  async function runInterventionTrellis() {
+    if (!interventionImage) return;
+    setTrellisLoading(true); setError(null);
+    try {
+      const imgBlob = await (await fetch(`${API}${interventionImage}`)).blob();
+      const newFile = new File([imgBlob], "intervened_campus.png", { type: "image/png" });
+      const form = new FormData();
+      form.append("file", newFile);
+      const res = await fetch(`${API}/api/generate-3d`, { method: "POST", body: form });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setInterventionTrellis(data);
+    } catch (e: any) {
+      setError("3D generation note: " + e.message);
+    } finally {
+      setTrellisLoading(false);
+    }
   }
 
   // ── Step renderers ────────────────────────────────────────────────────────
@@ -588,7 +631,7 @@ export default function PipelinePage() {
             {previewUrl && (
               <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 onClick={() => setActiveStep(2)}
-                className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all">
+                className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all cursor-pointer">
                 Analyse This Image <ChevronRight className="w-5 h-5" />
               </motion.button>
             )}
@@ -600,7 +643,6 @@ export default function PipelinePage() {
         return (
           <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
             {!segResult ? (
-              /* Pre-analysis state */
               <>
                 {previewUrl && (
                   <img src={previewUrl} alt="uploaded" className="max-h-48 rounded-lg border border-teal-700" />
@@ -622,14 +664,13 @@ export default function PipelinePage() {
                   ))}
                 </div>
                 <button onClick={runSegment} disabled={loading}
-                  className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50">
+                  className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50 cursor-pointer">
                   {loading
                     ? <><Loader2 className="w-5 h-5 animate-spin" /> Analysing…</>
                     : <>Run Surface Analysis <ChevronRight className="w-5 h-5" /></>}
                 </button>
               </>
             ) : (
-              /* Post-analysis: show overlay + stats, then Continue button */
               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full space-y-5">
                 <p className="text-heat-green font-semibold flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" /> Surface Analysis Complete
@@ -638,18 +679,18 @@ export default function PipelinePage() {
                 <SegStats seg={segResult} />
 
                 <div className="border-t border-teal-800/50 pt-5 flex flex-col items-center gap-3">
-                  <p className="text-gray-500 text-sm text-center">
+                  <p className="text-gray-400 text-sm text-center">
                     Generate a rotatable 3D model from your photo using TRELLIS (~1–3 min on HuggingFace GPU).
                   </p>
                   <div className="flex gap-3 flex-wrap justify-center">
                     <button onClick={runTrellis} disabled={loading}
-                      className="flex items-center gap-2 bg-heat-green text-teal-900 px-6 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50">
+                      className="flex items-center gap-2 bg-heat-green text-teal-900 px-6 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50 cursor-pointer">
                       {loading
                         ? <><Loader2 className="w-5 h-5 animate-spin" /> Generating 3D…</>
                         : "Generate 3D Model"}
                     </button>
                     <button onClick={() => setActiveStep(4)}
-                      className="flex items-center gap-2 border border-teal-600 text-teal-400 px-6 py-3 rounded font-semibold hover:bg-teal-800 transition-all text-sm">
+                      className="flex items-center gap-2 border border-teal-600 text-teal-400 px-6 py-3 rounded font-semibold hover:bg-teal-800 transition-all text-sm cursor-pointer">
                       Skip → Interventions
                     </button>
                   </div>
@@ -659,7 +700,7 @@ export default function PipelinePage() {
           </div>
         );
 
-      /* ── 3: 3D model (just the viewer + go to interventions) ─────────── */
+      /* ── 3: 3D model (viewer + proceed to interventions) ─────────────── */
       case 3:
         return (
           <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
@@ -676,28 +717,28 @@ export default function PipelinePage() {
               </motion.div>
             )}
             <button onClick={() => setActiveStep(4)}
-              className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all">
+              className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all cursor-pointer">
               Get AI Intervention Strategies <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         );
 
-      /* ── 4: Budget + Gemini ──────────────────────────────────────────── */
+      /* ── 4: Budget + Gemini AI Interventions ─────────────────────────── */
       case 4:
         return (
           <div className="flex flex-col items-center gap-6 w-full max-w-xl mx-auto">
             <p className="text-gray-400 text-sm text-center">
-              Gemini Vision analyses your actual photo and suggests strategies calibrated to your budget.
+              Gemini Vision analyses your actual campus photo and extracted surface data to recommend mitigation strategies calibrated to your budget.
             </p>
             <div className="w-full bg-teal-900/40 border border-teal-700 rounded-xl p-6 space-y-4">
               <div className="flex justify-between items-center">
-                <p className="text-white font-bold">Total Budget</p>
-                <p className="text-heat-green font-black text-2xl">₹{budget.toLocaleString("en-IN")}</p>
+                <p className="text-white font-bold">Total Budget Allocation</p>
+                <p className="text-heat-green font-black text-2xl font-mono">₹{budget.toLocaleString("en-IN")}</p>
               </div>
               <input type="range" min={50000} max={2000000} step={50000} value={budget}
                 onChange={e => setBudget(Number(e.target.value))}
                 className="w-full accent-[#06D6A0] h-2 cursor-pointer" />
-              <div className="flex justify-between text-xs text-gray-600">
+              <div className="flex justify-between text-xs text-gray-500 font-mono">
                 <span>₹50,000</span><span>₹20,00,000</span>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -708,7 +749,7 @@ export default function PipelinePage() {
                   { label: "Flagship", amount: 2000000 },
                 ].map(t => (
                   <button key={t.label} onClick={() => setBudget(t.amount)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer
                       ${budget === t.amount
                         ? "bg-heat-green text-teal-900 border-heat-green"
                         : "border-teal-700 text-gray-400 hover:border-heat-green"}`}>
@@ -718,43 +759,82 @@ export default function PipelinePage() {
               </div>
             </div>
             <button onClick={runInterventions} disabled={loading}
-              className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50 w-full justify-center">
+              className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50 w-full justify-center cursor-pointer">
               {loading
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Gemini is analysing your image…</>
-                : <>Suggest Interventions <ChevronRight className="w-5 h-5" /></>}
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> Gemini is analysing your photo…</>
+                : <>Generate Mitigation Interventions <ChevronRight className="w-5 h-5" /></>}
             </button>
           </div>
         );
 
-      /* ── 5: Selectable intervention cards + Visualize ───────────────── */
-      case 5:
+      /* ── 5: Dedicated Image-to-Image Simulation Step ─────────────────── */
+      case 5: {
+        const appliedInterventions = (interventions ?? []).filter((_, i) => selectedIdxs.includes(i));
+        const totalSelectedCost = appliedInterventions.reduce((s, x) => s + x.budget_inr, 0);
+        const totalSelectedDrop = appliedInterventions.reduce((s, x) => s + x.temp_reduction_c, 0);
+        const remainingBudget   = budget - totalSelectedCost;
+
         return (
-          <div className="flex flex-col items-center gap-6 w-full max-w-2xl mx-auto">
+          <div className="flex flex-col items-center gap-6 w-full max-w-3xl mx-auto">
+            {/* Step Explanation */}
             <div className="text-center w-full">
-              <h3 className="text-xl font-bold text-white mb-1">
-                Select interventions to visualize
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-900/60 border border-teal-700 text-heat-green text-xs font-mono mb-2">
+                <Sparkles className="w-3.5 h-3.5" /> Structural Image-to-Image Simulation
+              </div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tight">
+                Simulate Interventions on Campus Photo
               </h3>
-              <p className="text-gray-400 text-sm">
-                Tick one or more strategies below. Only selected ones will be drawn into the AI image.
+              <p className="text-gray-400 text-sm max-w-xl mx-auto mt-1">
+                Select one or more mitigation measures below according to your budget. The structural AI engine modifies the campus photo by simulating the interventions while keeping all original buildings, mature trees, and geometry locked.
               </p>
             </div>
 
-            {/* "Select all / none" toggle */}
-            <div className="flex gap-3 self-start">
-              <button onClick={() => setSelectedIdxs((interventions ?? []).map((_, i) => i))}
-                className="text-xs text-teal-400 border border-teal-700 px-3 py-1 rounded hover:bg-teal-800">
-                Select All
-              </button>
-              <button onClick={() => setSelectedIdxs([])}
-                className="text-xs text-gray-500 border border-teal-800 px-3 py-1 rounded hover:bg-teal-900">
-                Clear
-              </button>
-              <span className="text-xs text-gray-600 self-center">
-                {selectedIdxs.length} / {interventions?.length ?? 0} selected
+            {/* Live Budget & Impact Tracker */}
+            <div className="w-full bg-teal-950/70 border border-teal-700 rounded-xl p-4 shadow-lg">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="p-2.5 rounded-lg bg-teal-900/40 border border-teal-800">
+                  <p className="text-[10px] text-gray-400 uppercase font-mono">Total Budget</p>
+                  <p className="text-base font-black text-white font-mono mt-0.5">₹{budget.toLocaleString("en-IN")}</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-teal-900/40 border border-teal-800">
+                  <p className="text-[10px] text-gray-400 uppercase font-mono">Selected Cost</p>
+                  <p className="text-base font-black text-white font-mono mt-0.5">₹{totalSelectedCost.toLocaleString("en-IN")}</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-teal-900/40 border border-teal-800">
+                  <p className="text-[10px] text-gray-400 uppercase font-mono">Remaining Budget</p>
+                  <p className={`text-base font-black font-mono mt-0.5 ${remainingBudget >= 0 ? "text-heat-green" : "text-rose-400"}`}>
+                    {remainingBudget >= 0 ? `₹${remainingBudget.toLocaleString("en-IN")}` : `-₹${Math.abs(remainingBudget).toLocaleString("en-IN")}`}
+                  </p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-teal-900/40 border border-teal-800">
+                  <p className="text-[10px] text-gray-400 uppercase font-mono">Expected Temp Drop</p>
+                  <p className="text-base font-black text-heat-green mt-0.5">-{totalSelectedDrop.toFixed(1)}°C</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Selection Toggles */}
+            <div className="flex justify-between items-center w-full">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedIdxs((interventions ?? []).map((_, i) => i))}
+                  className="text-xs text-teal-400 border border-teal-700 px-3 py-1.5 rounded hover:bg-teal-800 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckSquare className="w-3.5 h-3.5" /> Select All
+                </button>
+                <button
+                  onClick={() => setSelectedIdxs([])}
+                  className="text-xs text-gray-400 border border-teal-800 px-3 py-1.5 rounded hover:bg-teal-900 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Square className="w-3.5 h-3.5" /> Clear
+                </button>
+              </div>
+              <span className="text-xs text-gray-400 font-mono">
+                {selectedIdxs.length} of {interventions?.length ?? 0} selected
               </span>
             </div>
 
-            {/* Intervention cards */}
+            {/* Interventions Checklist Cards */}
             <div className="w-full space-y-3">
               {interventions?.map((item, i) => (
                 <InterventionCard
@@ -767,46 +847,189 @@ export default function PipelinePage() {
               ))}
             </div>
 
-            {/* Selected summary */}
-            {selectedIdxs.length > 0 && interventions && (
-              <div className="w-full bg-teal-900/40 border border-teal-700 rounded-xl p-4">
-                <div className="grid grid-cols-3 text-center gap-2">
-                  <div>
-                    <p className="text-[10px] text-gray-500">Est. Cost</p>
-                    <p className="text-white font-black">
-                      ₹{interventions.filter((_, i) => selectedIdxs.includes(i))
-                          .reduce((s, x) => s + x.budget_inr, 0).toLocaleString("en-IN")}
-                    </p>
+            {/* Trigger Simulation Button */}
+            <div className="w-full pt-2">
+              <button
+                onClick={runSimulateImage}
+                disabled={simulating || selectedIdxs.length === 0}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-heat-green to-teal-400 text-teal-950 font-black px-8 py-3.5 rounded-xl uppercase tracking-wider hover:brightness-110 transition-all disabled:opacity-40 cursor-pointer shadow-[0_0_20px_rgba(6,214,160,0.3)]"
+              >
+                {simulating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Simulating {selectedIdxs.length} Interventions on Campus Photo…
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    Simulate {selectedIdxs.length} Selected Intervention{selectedIdxs.length !== 1 ? "s" : ""} on Photo
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Results Display within Step 5 once simulated */}
+            {interventionImage && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full mt-4 border border-teal-700/80 rounded-2xl p-5 bg-gradient-to-b from-[#0a1628] to-[#040914] space-y-5"
+              >
+                {/* Result Header */}
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-teal-800/60">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-heat-green" />
+                    <div>
+                      <h4 className="text-white font-bold text-sm">Interventions Successfully Simulated</h4>
+                      <p className="text-[11px] text-gray-400">Original layout &amp; buildings preserved</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500">Temp Drop</p>
-                    <p className="text-heat-green font-black">
-                      -{interventions.filter((_, i) => selectedIdxs.includes(i))
-                           .reduce((s, x) => s + x.temp_reduction_c, 0).toFixed(1)}°C
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500">Strategies</p>
-                    <p className="text-white font-black">{selectedIdxs.length}</p>
-                  </div>
+                  {interventionModel && (
+                    <span className="text-[10px] font-mono text-teal-300 bg-teal-900/60 border border-teal-700 px-2.5 py-1 rounded-full">
+                      {interventionModel}
+                    </span>
+                  )}
                 </div>
-              </div>
+
+                {/* View Mode Switcher */}
+                <div className="flex justify-center gap-2">
+                  {[
+                    { id: "side", label: "Side-by-Side" },
+                    { id: "original", label: "Original Campus Photo" },
+                    { id: "intervened", label: "Simulated Interventions" },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setSimViewMode(mode.id as any)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                        simViewMode === mode.id
+                          ? "bg-heat-green text-teal-950 font-bold border-heat-green"
+                          : "border-teal-800 text-gray-400 hover:border-teal-700"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Interactive Image Viewers */}
+                {simViewMode === "side" && segResult && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-mono uppercase text-gray-400">Before: Original Photo</span>
+                        <a href={`${API}${segResult.original_url}`} download className="text-[10px] text-teal-400 hover:underline">Download</a>
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`${API}${segResult.original_url}`} alt="original" className="w-full rounded-xl border border-teal-800 object-cover" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[10px] font-mono uppercase text-heat-green">After: Simulated Interventions</span>
+                        <a href={`${API}${interventionImage}`} download className="text-[10px] text-heat-green hover:underline">Download</a>
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={`${API}${interventionImage}`} alt="simulated" className="w-full rounded-xl border border-heat-green/60 shadow-[0_0_15px_rgba(6,214,160,0.2)] object-cover" />
+                    </div>
+                  </div>
+                )}
+
+                {simViewMode === "original" && segResult && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-mono uppercase text-gray-400">Original Ground-Level View</span>
+                      <a href={`${API}${segResult.original_url}`} download className="text-xs text-teal-400 hover:underline flex items-center gap-1">
+                        <Download className="w-3.5 h-3.5" /> Download
+                      </a>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${API}${segResult.original_url}`} alt="original" className="w-full rounded-xl border border-teal-800 object-cover max-h-[500px]" />
+                  </div>
+                )}
+
+                {simViewMode === "intervened" && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-mono uppercase text-heat-green">Simulated Campus Interventions</span>
+                      <a href={`${API}${interventionImage}`} download className="text-xs text-heat-green hover:underline flex items-center gap-1">
+                        <Download className="w-3.5 h-3.5" /> Download
+                      </a>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${API}${interventionImage}`} alt="simulated" className="w-full rounded-xl border border-heat-green/60 shadow-[0_0_20px_rgba(6,214,160,0.25)] object-cover max-h-[500px]" />
+                  </div>
+                )}
+
+                {/* 3D Model Option for Intervened Scene */}
+                <div className="p-4 rounded-xl bg-teal-900/30 border border-teal-800 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h5 className="text-white font-bold text-xs uppercase tracking-wider">3D Model with Interventions</h5>
+                      <p className="text-[11px] text-gray-400">Optional: Generate a rotatable 3D mesh of the intervened scene with TRELLIS</p>
+                    </div>
+                    {!interventionTrellis ? (
+                      <button
+                        onClick={runInterventionTrellis}
+                        disabled={trellisLoading}
+                        className="text-xs bg-teal-800 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg border border-teal-600 transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        {trellisLoading ? (
+                          <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating 3D…</>
+                        ) : (
+                          <><Box className="w-3.5 h-3.5" /> Generate Intervened 3D Mesh</>
+                        )}
+                      </button>
+                    ) : (
+                      <a
+                        href={`${API}${interventionTrellis.model_url}`}
+                        download
+                        className="text-xs text-teal-300 border border-teal-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-teal-800/60"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download Intervened GLB
+                      </a>
+                    )}
+                  </div>
+
+                  {interventionTrellis && (
+                    <div className="pt-2">
+                      <GLBViewer url={`${API}${interventionTrellis.model_url}`} height="h-64" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Advance to Final Report CTA */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-end items-center">
+                  <button
+                    onClick={runSimulateImage}
+                    className="text-xs text-gray-400 hover:text-white px-3 py-2 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Re-simulate with different options
+                  </button>
+                  <button
+                    onClick={() => setActiveStep(6)}
+                    className="flex items-center gap-2 bg-heat-green text-teal-950 font-bold px-6 py-2.5 rounded-xl uppercase tracking-wider hover:bg-heat-yellow transition-all cursor-pointer shadow-md"
+                  >
+                    Proceed to Final Report (Step 06) <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
             )}
 
-            <button onClick={runVisualize} disabled={loading || selectedIdxs.length === 0}
-              className="flex items-center gap-2 bg-heat-green text-teal-900 px-8 py-3 rounded font-bold uppercase hover:bg-heat-yellow transition-all disabled:opacity-50 w-full justify-center">
-              {loading
-                ? <><Loader2 className="w-5 h-5 animate-spin" /> Generating image & 3D model…</>
-                : `Visualize ${selectedIdxs.length} Intervention${selectedIdxs.length !== 1 ? "s" : ""} with FLUX + Trellis`}
-            </button>
-            <button onClick={() => setActiveStep(6)} disabled={loading}
-              className="text-teal-500 text-sm hover:underline">
-              Skip — go straight to Report
-            </button>
+            {/* Skip button if user just wants report */}
+            {!interventionImage && (
+              <button
+                onClick={() => setActiveStep(6)}
+                disabled={simulating}
+                className="text-teal-400 text-xs hover:underline cursor-pointer"
+              >
+                Skip simulation and view Final Report →
+              </button>
+            )}
           </div>
         );
+      }
 
-      /* ── 6: Report ───────────────────────────────────────────────────── */
+      /* ── 6: Final Comprehensive Report ───────────────────────────────── */
       case 6:
         if (!segResult || !interventions) return null;
         return (
@@ -817,6 +1040,7 @@ export default function PipelinePage() {
             budget={budget}
             selectedIdxs={selectedIdxs}
             interventionImage={interventionImage}
+            interventionModel={interventionModel}
             interventionTrellis={interventionTrellis}
             onReset={reset}
           />
@@ -845,7 +1069,7 @@ export default function PipelinePage() {
 
         {/* Step title */}
         <div className="mb-8">
-          <span className="text-[10px] font-mono tracking-widest text-heat-green">
+          <span className="text-[10px] font-mono tracking-widest text-heat-green uppercase">
             STEP {String(activeStep).padStart(2, "0")} / 0{STEPS.length}
           </span>
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white mt-1">
@@ -856,9 +1080,17 @@ export default function PipelinePage() {
 
         {/* Error banner */}
         {error && (
-          <div className="mb-6 bg-red-950/40 border border-red-700 rounded-lg p-4 text-sm text-red-300">
-            <p className="font-semibold mb-1">Error</p>
-            <p className="text-xs font-mono">{error}</p>
+          <div className="mb-6 bg-red-950/40 border border-red-700 rounded-lg p-4 text-sm text-red-300 flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold mb-1">Notice</p>
+              <p className="text-xs font-mono">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-xs text-red-400 hover:text-white border border-red-700/60 px-2 py-0.5 rounded cursor-pointer"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
