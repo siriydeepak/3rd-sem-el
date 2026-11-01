@@ -438,10 +438,21 @@ Respond ONLY as a valid JSON array — no markdown, no explanation outside the J
 #  Uses Stability AI SD3 (active credits) with structure preservation.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  STEP 4 — /api/generate-intervention-image
+#  Accurately simulates selected UHI mitigation interventions directly onto the
+#  source campus photo using structural Image-to-Image / Inpainting preservation.
+#  Supported engines:
+#    1. Pollinations AI: InferencePort Lightning Image Plus (free key from enter.pollinations.ai/keys)
+#    2. Stability AI: ControlNet Structure (locks existing buildings, trees, walkway)
+#    3. fal.ai: FLUX schnell / dev img2img fallback
+# ─────────────────────────────────────────────────────────────────────────────
+
 import httpx
 
-STABILITY_API_KEY = os.getenv("STABILITY_API_KEY", "")
-FAL_KEY = os.getenv("FAL_KEY", "")
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+STABILITY_API_KEY    = os.getenv("STABILITY_API_KEY", "")
+FAL_KEY              = os.getenv("FAL_KEY", "")
 
 @app.post("/api/generate-intervention-image")
 async def generate_intervention_image(
@@ -452,9 +463,9 @@ async def generate_intervention_image(
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    logger.info("[IMG2IMG] Generating intervention image, prompt: %s…", prompt[:60])
+    logger.info("[IMG2IMG] Generating intervention image with prompt: %s…", prompt[:80])
 
-    # Resize to max 1024x1024 for fast and reliable API processing
+    # Resize to standard 1024x1024 for optimal ControlNet / img2img fidelity
     try:
         pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         pil_img.thumbnail((1024, 1024), Image.LANCZOS)
@@ -464,30 +475,62 @@ async def generate_intervention_image(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Image decode failed: {exc}")
 
-    full_prompt = (
-        "Photorealistic architectural rendering of an urban campus plaza. Same exact camera angle and viewpoint. "
-        "Same buildings, existing mature trees, and ground perspective. Added interventions: "
-        + prompt.strip().rstrip(".") + ". "
-        "High quality, 8k resolution, crisp architectural details, sunny afternoon lighting."
+    # Structured prompt ensuring original scene perspective, architecture, and lighting remain preserved
+    structural_prompt = (
+        "Simulate urban heat mitigation interventions on this exact campus area. "
+        "Keep the exact same buildings, existing mature trees, ground perspective, walkways, and camera angle. "
+        f"Add the following specific interventions: {prompt.strip().rstrip('.')}. "
+        "High architectural rendering quality, crisp realism, sunny afternoon daylight, photorealistic."
     )
 
-    # 1. Try Stability AI SD3 Image-to-Image (active with confirmed credits)
-    if STABILITY_API_KEY:
+    # ── 1. Pollinations AI (InferencePort AI Lightning Image Plus) ─────────────
+    if POLLINATIONS_API_KEY:
         try:
-            logger.info("[STABILITY] Calling SD3 Image-to-Image…")
+            logger.info("[POLLINATIONS] Calling InferencePort AI Lightning Image Plus…")
             async with httpx.AsyncClient(timeout=90.0) as client:
                 resp = await client.post(
-                    "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+                    "https://gen.pollinations.ai/v1/images/edits",
+                    headers={
+                        "Authorization": f"Bearer {POLLINATIONS_API_KEY}",
+                    },
+                    files={"image": ("campus.png", resized_bytes, "image/png")},
+                    data={
+                        "model": "community/sharktide/inferenceport-ai-lightning-image-plus",
+                        "prompt": structural_prompt,
+                    }
+                )
+
+                if resp.status_code == 200:
+                    img_id = uuid.uuid4().hex[:8]
+                    out_path = UPLOAD_DIR / f"intervention_{img_id}.png"
+                    out_path.write_bytes(resp.content)
+                    logger.info("[POLLINATIONS] Success! Saved to %s", out_path.name)
+                    return {
+                        "status": "success",
+                        "image_url": f"/uploads/{out_path.name}",
+                        "model": "InferencePort AI Lightning Image Plus (Pollinations)",
+                        "engine": "pollinations"
+                    }
+                else:
+                    logger.warning("[POLLINATIONS] Error %d: %s", resp.status_code, resp.text[:200])
+        except Exception as exc:
+            logger.warning("[POLLINATIONS] Call failed: %s", exc)
+
+    # ── 2. Stability AI (ControlNet Structure) ─────────────────────────────────
+    if STABILITY_API_KEY:
+        try:
+            logger.info("[STABILITY] Calling ControlNet Structure endpoint…")
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                resp = await client.post(
+                    "https://api.stability.ai/v2beta/stable-image/control/structure",
                     headers={
                         "authorization": f"Bearer {STABILITY_API_KEY}",
                         "accept": "image/*"
                     },
-                    files={"image": ("input.png", resized_bytes, "image/png")},
+                    files={"image": ("campus.png", resized_bytes, "image/png")},
                     data={
-                        "prompt": full_prompt,
-                        "mode": "image-to-image",
-                        "strength": 0.60,
-                        "model": "sd3-medium",
+                        "prompt": structural_prompt,
+                        "control_strength": 0.75,
                         "output_format": "png"
                     }
                 )
@@ -496,18 +539,100 @@ async def generate_intervention_image(
                     img_id = uuid.uuid4().hex[:8]
                     out_path = UPLOAD_DIR / f"intervention_{img_id}.png"
                     out_path.write_bytes(resp.content)
-                    logger.info("[STABILITY] Success! Saved to %s", out_path.name)
+                    logger.info("[STABILITY] ControlNet Structure Success! Saved to %s", out_path.name)
                     return {
                         "status": "success",
                         "image_url": f"/uploads/{out_path.name}",
-                        "model": "stability-ai/sd3-medium"
+                        "model": "Stability ControlNet Structure (Structure Preserved)",
+                        "engine": "stability"
                     }
                 else:
-                    logger.warning("[STABILITY] API returned %d: %s", resp.status_code, resp.text)
+                    logger.warning("[STABILITY] Structure error %d: %s", resp.status_code, resp.text[:200])
+                    # Fallback to SD3 image-to-image if structure is unavailable
+                    sd3_resp = await client.post(
+                        "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+                        headers={
+                            "authorization": f"Bearer {STABILITY_API_KEY}",
+                            "accept": "image/*"
+                        },
+                        files={"image": ("campus.png", resized_bytes, "image/png")},
+                        data={
+                            "prompt": structural_prompt,
+                            "mode": "image-to-image",
+                            "strength": 0.55,
+                            "model": "sd3-medium",
+                            "output_format": "png"
+                        }
+                    )
+                    if sd3_resp.status_code == 200:
+                        img_id = uuid.uuid4().hex[:8]
+                        out_path = UPLOAD_DIR / f"intervention_{img_id}.png"
+                        out_path.write_bytes(sd3_resp.content)
+                        return {
+                            "status": "success",
+                            "image_url": f"/uploads/{out_path.name}",
+                            "model": "Stability SD3 Image-to-Image",
+                            "engine": "stability"
+                        }
         except Exception as exc:
             logger.warning("[STABILITY] Call failed: %s", exc)
 
-    # 2. Try fal.ai if configured and active
+    # ── 3. Hugging Face Spaces (InstructPix2Pix — 100% Free & Unlimited) ─────
+    # Uses timbrooks/instruct-pix2pix on Hugging Face ZeroGPU via gradio_client.
+    # Takes the campus photo itself, preserves perspective with image_cfg_scale=1.5,
+    # and accurately modifies the scene with the intervention prompt.
+    try:
+        from gradio_client import Client, handle_file
+        import tempfile, shutil
+
+        logger.info("[HUGGINGFACE] Calling timbrooks/instruct-pix2pix space (free & structure-preserving)…")
+        if HF_TOKEN:
+            os.environ["HF_TOKEN"] = HF_TOKEN
+            os.environ["HUGGING_FACE_HUB_TOKEN"] = HF_TOKEN
+
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_in:
+            tmp_in.write(resized_bytes)
+            tmp_in_path = tmp_in.name
+
+        try:
+            hf_client = await asyncio.to_thread(Client, "timbrooks/instruct-pix2pix")
+            result = await asyncio.to_thread(
+                hf_client.predict,
+                input_image=handle_file(tmp_in_path),
+                instruction=f"Add urban heat mitigation interventions: {prompt.strip().rstrip('.')}",
+                steps=25,
+                randomize_seed="Randomize Seed",
+                seed=42,
+                randomize_cfg="Fix CFG",
+                text_cfg_scale=7.5,
+                image_cfg_scale=1.5,
+                api_name="/generate"
+            )
+
+            if result and len(result) >= 4 and result[3]:
+                generated_file_path = result[3]
+                img_id = uuid.uuid4().hex[:8]
+                out_path = UPLOAD_DIR / f"intervention_{img_id}.png"
+                
+                # Convert to PNG for consistency
+                with Image.open(generated_file_path) as out_im:
+                    out_im.convert("RGB").save(out_path, format="PNG")
+
+                logger.info("[HUGGINGFACE] Success! Saved to %s", out_path.name)
+                return {
+                    "status": "success",
+                    "image_url": f"/uploads/{out_path.name}",
+                    "model": "InstructPix2Pix (HuggingFace Free Space - Structure Preserved)",
+                    "engine": "huggingface"
+                }
+        finally:
+            if os.path.exists(tmp_in_path):
+                os.remove(tmp_in_path)
+
+    except Exception as exc:
+        logger.warning("[HUGGINGFACE] InstructPix2Pix space error: %s", exc)
+
+    # ── 4. fal.ai fallback ───────────────────────────────────────────────────
     if FAL_KEY:
         try:
             import fal_client
@@ -520,8 +645,8 @@ async def generate_intervention_image(
                 "fal-ai/flux/schnell/image-to-image",
                 arguments={
                     "image_url": data_url,
-                    "prompt": full_prompt,
-                    "strength": 0.65,
+                    "prompt": structural_prompt,
+                    "strength": 0.60,
                     "num_inference_steps": 4,
                     "seed": 42
                 }
@@ -536,14 +661,15 @@ async def generate_intervention_image(
             return {
                 "status": "success",
                 "image_url": f"/uploads/{out_path.name}",
-                "model": "fal-ai/flux-schnell"
+                "model": "fal-ai/flux-schnell",
+                "engine": "fal"
             }
         except Exception as exc:
             logger.warning("[FAL] Call failed: %s", exc)
 
     raise HTTPException(
         status_code=500,
-        detail="Image generation failed. Please verify API credits in backend/.env"
+        detail="Image-to-image simulation could not complete. Please check network connectivity or API keys."
     )
 
 if __name__ == "__main__":
